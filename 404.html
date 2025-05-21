@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>404 Not Found</title>
+  <style>
+    body {
+      background-color: #222;
+      color: #eee;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      padding-top: 20vh;
+      transition: background-color 2s, color 2s, opacity 2s;
+    }
+
+    h1 {
+      font-size: 4em;
+      margin-bottom: 0.5em;
+      text-shadow: 1px 1px #ff0000, 0 0 5px #ff0000, 1px 1px 10px #ff0000;
+      color: #f00;
+    }
+
+    p {
+      font-size: 1.2em;
+      color: #ccc;
+      margin: 10px 0;
+    }
+
+    .system-message {
+      color: #ffcc00;
+      font-size: 1em;
+      margin-top: 1.5em;
+    }
+
+    .vanish {
+      background-color: #000 !important;
+      color: #000 !important;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .glitch {
+      color: #f00;
+      animation: glitch 1s infinite;
+    }
+
+    @keyframes glitch {
+      0%   { text-shadow: 1px 1px 2px #0ff, -1px -1px 2px #f00; }
+      50%  { text-shadow: -1px -1px 5px #0f0, 1px 1px 3px #f00; }
+      100% { text-shadow: 1px 1px 2px #f0f, -1px -1px 2px #ff0; }
+    }
+
+  </style>
+</head>
+<body onclick="startVanishing()">
+
+  <h1 class="glitch">404 NOT FOUND</h1>
+  <p>The page you are looking for no longer exists.</p>
+  <p class="system-message">Error: Connection lost. Attempting recovery.</p>
+  <p>Click anywhere to return to safety...</p>
+
+  <script>
+    function startVanishing() {
+      // Apply the vanish effect to the body
+      document.body.classList.add('vanish');
+      // Wait for the fade effect to finish (2.5s), then redirect
+      setTimeout(() => {
+        window.location.href = 'index.html';  // Redirect to your birthday card page
+      }, 2500);
+    }
+  </script>
+
+</body>
+</html>
