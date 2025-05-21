@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Happy Birthday, [Name]</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      padding: 2em;
+      line-height: 1.6;
+    }
+
+    .glitch {
+      color: #f00;
+      animation: glitch 1s infinite;
+    }
+
+    .hidden {
+      color: #000;
+      user-select: text;
+    }
+
+    .indented {
+      margin-left: 2em;
+    }
+
+    .fade {
+      color: #444;
+    }
+
+    .spiral {
+      margin-left: 1em;
+    }
+
+    .spiral .spiral {
+      margin-left: 1em;
+    }
+
+    .flicker {
+      color: #222;
+      font-size: 0.9em;
+      letter-spacing: 0.1em;
+      text-align: center;
+      animation: flickerText 4s infinite;
+      margin-top: 3em;
+    }
+
+    @keyframes glitch {
+      0%   { text-shadow: 1px 1px #0ff; }
+      50%  { text-shadow: -1px -1px #f0f; }
+      100% { text-shadow: 1px 1px #0ff; }
+    }
+
+    @keyframes flickerText {
+      0%   { opacity: 0; }
+      10%  { opacity: 0.2; }
+      20%  { opacity: 0.4; }
+      30%  { opacity: 0.1; }
+      40%  { opacity: 0.6; }
+      50%  { opacity: 0; }
+      60%  { opacity: 0.3; }
+      70%  { opacity: 0.1; }
+      80%  { opacity: 0.5; }
+      90%  { opacity: 0.2; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Happy Birthday</h1>
+
+  <p>Another year. Another passage. Another <span class="glitch">glitch</span> in the structure.</p>
+
+  <p class="fade">They told you it was just a room.</p>
+
+  <p class="indented">But you know better now.</p>
+
+  <p>Listen closely.</p>
+
+  <div class="spiral">
+    <div class="spiral">
+      <div class="spiral">
+        <div class="spiral">
+          <div class="spiral">
+            <div class="spiral">
+              <div class="spiral">
+                <p>The <span class="glitch">walls</span> are moving.</p>
+                <p class="hidden">It's still behind you.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p><strong>Enjoy your day.</strong> While you still have days to enjoy.</p>
+
+  <div class="flicker">release the hypno drones</div>
+
+  <hr>
+
+  <footer>
+    <p style="font-size: 0.7em; color: #444;">&copy; ????. Timestamp corrupted.</p>
+    <p style="font-size: 0.7em; color: #222;"><em>// log: user_birthday_event: anomaly_detected</em></p>
+  </footer>
+
+</body>
+</html>
