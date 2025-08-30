@@ -19,3 +19,9 @@
     font-size: 0.9rem;
     margin-bottom: 1rem;
 }
+
+.author {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 0.5em;
+}
