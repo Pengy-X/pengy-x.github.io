@@ -25,3 +25,31 @@
     color: #666;
     margin-bottom: 0.5em;
 }
+
+.post-image {
+    margin: 1.5em 0;
+    text-align: center;
+}
+
+.post-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.post-image figcaption {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 0.5em;
+    font-style: italic;
+}
+
+.post-image figcaption a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.post-image figcaption a:hover {
+    text-decoration: underline;
+}
