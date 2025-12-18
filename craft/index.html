@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CraftCards - Flashcard Learning App</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'><path fill='%23a855f7' d='M264.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L45.9 149.8C37.4 145.8 32 137.3 32 128s5.4-17.9 13.9-21.8L264.5 5.2zM476.9 209.6l53.2 24.6c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L45.9 277.8C37.4 273.8 32 265.3 32 256s5.4-17.9 13.9-21.8l53.2-24.6 152 70.2c23.4 10.8 50.4 10.8 73.8 0l152-70.2zm-152 198.2l152-70.2 53.2 24.6c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L45.9 405.8C37.4 401.8 32 393.3 32 384s5.4-17.9 13.9-21.8l53.2-24.6 152 70.2c23.4 10.8 50.4 10.8 73.8 0z'/></svg>" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .flip-card {
+            perspective: 1000px;
+            height: 500px;
+        }
+        @media (min-height: 800px) {
+            .flip-card {
+                height: 600px;
+            }
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            -moz-backface-visibility: hidden;
+            -ms-backface-visibility: hidden;
+            transition: opacity 0.1s ease-in-out;
+        }
+        .flip-card-front {
+            z-index: 2;
+            transform: rotateY(0deg);
+        }
+        .flip-card-back {
+            z-index: 1;
+            transform: rotateY(180deg);
+        }
+        /* Fallback for Android browsers with poor backface-visibility support */
+        .flip-card:not(.flipped) .flip-card-back {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        .flip-card.flipped .flip-card-front {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        .flip-card.flipped .flip-card-back {
+            z-index: 2;
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Fireworks animation */
+        @keyframes firework {
+            0% { transform: translate(0, 0) scale(0); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) scale(1); opacity: 0; }
+        }
+        
+        .firework {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: firework 1s ease-out infinite;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            animation: confetti-fall 3s linear infinite;
+            z-index: 1000;
+        }
+        
+        /* Markdown content styling */
+        .markdown-content ul, .markdown-content ol {
+            text-align: left;
+            margin: 1rem 0;
+            padding-left: 2rem;
+            list-style-position: outside;
+        }
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+        .markdown-content ul ul {
+            list-style-type: circle;
+        }
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+        .markdown-content li {
+            margin: 0.5rem 0;
+            display: list-item;
+        }
+        .markdown-content p {
+            margin: 0.5rem 0;
+        }
+        .markdown-content img {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900 min-h-screen transition-colors duration-300" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;">
+    <div id="app">
+        <div class="container mx-auto px-4 py-8 pb-48 md:pb-40">
+            <!-- Header -->
+            <header v-if="currentView !== 'study'" class="max-w-4xl mx-auto mb-8">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1">
+                        <h1 class="text-4xl md:text-5xl font-semibold text-gray-800 dark:text-white mb-2 tracking-tight"><i class="fas fa-layer-group text-purple-500"></i> CraftCards</h1>
+                        <p class="text-gray-600 dark:text-gray-300 text-base md:text-lg font-light">Craft your learning</p>
+                    </div>
+                    <button @click="toggleTheme" class="flex-shrink-0 p-2 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 transition-all ml-4 shadow-sm">
+                        <i v-if="isDarkMode" class="fas fa-sun text-xl text-yellow-400"></i>
+                        <i v-else class="fas fa-moon text-xl text-gray-700"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Loading State -->
+            <div v-if="loading" class="text-center">
+                <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600 dark:border-amber-400"></div>
+                <p class="text-gray-800 dark:text-gray-200 mt-4 text-xl">Loading...</p>
+            </div>
+
+            <!-- Error State -->
+            <div v-if="error" class="max-w-2xl mx-auto bg-red-100 dark:bg-red-500/10 border-2 border-red-400 dark:border-red-500/50 text-red-700 dark:text-red-200 px-6 py-4 rounded-2xl shadow-xl">
+                <h3 class="font-bold mb-2 text-xl">⚠️ Error</h3>
+                <p>{{ error }}</p>
+                <button @click="loadDecks" class="mt-4 bg-gradient-to-r from-red-600 to-red-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-red-500 hover:to-red-400 transition-all transform hover:scale-105 shadow-lg">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+            </div>
+
+            <!-- Deck Selection View -->
+            <div v-if="!loading && !error && currentView === 'decks'" class="max-w-4xl mx-auto animate-fade-in space-y-8">
+                <!-- Deck Selection -->
+                <div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl rounded-3xl shadow-lg p-8 md:p-10 border border-purple-200/50 dark:border-purple-800/50 transition-colors duration-300">
+                    <h2 class="text-3xl font-semibold text-gray-800 dark:text-white mb-8 tracking-tight"><i class="fas fa-sparkles text-pink-500"></i> Choose a deck</h2>
+                    
+                    <div v-if="decks.length === 0" class="text-center py-12">
+                        <p class="text-gray-500 dark:text-gray-400 text-lg">No decks available</p>
+                    </div>
+                    
+                    <div v-else class="grid gap-5">
+                        <div v-for="deck in decks" :key="deck.id" 
+                             @click="selectDeck(deck)"
+                             class="flex items-center gap-4 p-5 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-2xl hover:bg-gradient-to-br hover:from-white/90 hover:to-purple-50/50 dark:hover:from-gray-800/90 dark:hover:to-purple-900/20 hover:border-purple-400/50 dark:hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/10 cursor-pointer transition-all duration-300">
+                            <img v-if="getDeckImage(deck)" :src="getDeckImage(deck)" 
+                                 class="w-20 h-20 object-cover rounded-xl flex-shrink-0 ring-2 ring-purple-400/50 dark:ring-purple-600/50 shadow-lg" 
+                                 :alt="deck.title"
+                                 loading="eager"
+                                 decoding="async">
+                            <div class="flex-1">
+                                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">{{ deck.title }}</h3>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3 flex-wrap">
+                                        <span class="text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                                            <i class="fas fa-book"></i> {{ getFlashcardCount(deck) }} flashcards
+                                        </span>
+                                        <span class="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                            <i class="fas fa-chart-line"></i> {{ getSessionCount(deck) }} sessions
+                                        </span>
+                                        <span v-if="getAverageScore(deck) !== null" 
+                                              class="text-sm font-bold" 
+                                              :class="getAverageScoreClass(getAverageScore(deck))">
+                                            <i class="fas fa-star"></i> {{ getAverageScore(deck) }}% avg
+                                        </span>
+                                    </div>
+                                    <span class="text-purple-500 dark:text-purple-400 font-bold text-lg">→</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Sessions Table -->
+                <div v-if="recentSessions.length > 0" class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl rounded-3xl shadow-lg p-8 md:p-10 border border-teal-200/50 dark:border-teal-800/50 transition-colors duration-300">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white tracking-tight"><i class="fas fa-clock text-teal-500"></i> Recent sessions</h2>
+                        <button @click="clearSessions" class="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-semibold underline transition-colors">
+                            Clear all
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b-2 border-gray-200 dark:border-slate-700">
+                                    <th class="text-left py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300">Date</th>
+                                    <th class="text-left py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300">Deck</th>
+                                    <th class="text-center py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300">Flashcards</th>
+                                    <th class="text-center py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300">Time</th>
+                                    <th class="text-center py-3 px-2 text-sm font-bold text-gray-700 dark:text-gray-300">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="session in recentSessions" :key="session.id" class="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td class="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">{{ formatSessionDate(session.title) }}</td>
+                                    <td class="py-3 px-2 text-sm font-medium text-gray-800 dark:text-white">{{ getDeckNameForSession(session) }}</td>
+                                    <td class="py-3 px-2 text-sm text-center text-gray-600 dark:text-gray-400">{{ session.flashcards_played }}</td>
+                                    <td class="py-3 px-2 text-sm text-center text-gray-600 dark:text-gray-400">{{ formatElapsedTime(session.elapsedTime) }}</td>
+                                    <td class="py-3 px-2 text-center">
+                                        <span class="inline-block px-3 py-1 rounded-full text-sm font-bold" :class="getScoreClass(session.score)">
+                                            {{ session.score }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Study View -->
+            <div v-if="!loading && !error && currentView === 'study'" class="fixed inset-0 z-40 flex items-center justify-center p-4 animate-fade-in">
+                <div class="w-full max-w-5xl flex flex-col gap-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl rounded-3xl shadow-2xl p-6 md:p-10 border border-purple-200/30 dark:border-purple-800/30 transition-colors duration-300" style="max-height: 95vh;">
+                    <!-- Progress Bar -->
+                    <div class="flex-shrink-0">
+                        <div class="flex justify-between text-sm text-gray-700 dark:text-gray-300 mb-2">
+                            <span>{{ selectedDeck.title }}</span>
+                            <span><i class="fas fa-stopwatch"></i> {{ formattedTimer }}</span>
+                            <span>{{ currentCardIndex + 1 }} / {{ currentDeckFlashcards.length }}</span>
+                        </div>
+                        <div class="w-full bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 h-2.5 rounded-full transition-all duration-500 shadow-sm" 
+                                 :style="{width: progress + '%'}"></div>
+                        </div>
+                    </div>
+
+                    <!-- Flashcard -->
+                    <div v-if="currentCard" class="flip-card relative" :class="{flipped: isFlipped}">
+                        <!-- Exit button (top-left corner) -->
+                        <button @click.stop="showExitModal = true" 
+                                class="absolute top-3 left-3 z-10 w-9 h-9 rounded-full bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl hover:bg-white/90 dark:hover:bg-gray-800/90 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        
+                        <!-- Instruction text (top-right corner) -->
+                        <div class="absolute top-3 right-3 z-10 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl px-3 py-1.5 rounded-full shadow-lg border border-gray-200/50 dark:border-gray-700/50">
+                            <p v-if="!isFlipped" class="text-xs text-gray-700 dark:text-gray-200 font-medium"><i class="fas fa-eye"></i> Click to reveal</p>
+                            <p v-else class="text-xs text-gray-700 dark:text-gray-200 font-medium"><i class="fas fa-rotate-left"></i> See question</p>
+                        </div>
+                        
+                        <div class="flip-card-inner">
+                            <!-- Front (Question) -->
+                            <div class="flip-card-front bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-800 dark:to-purple-900/20 backdrop-blur-sm rounded-3xl border-2 border-purple-400/50 dark:border-purple-500/50 cursor-pointer p-8 shadow-xl shadow-purple-500/10 overflow-y-auto flex justify-center"
+                                 @click="flipCard"
+                                 :class="hasComplexContent(getQuestion(currentCard)) ? 'items-start' : 'items-center'">
+                                <div class="w-full transition-opacity duration-300" :class="[hasComplexContent(getQuestion(currentCard)) ? 'text-left' : 'text-center', isTransitioning ? 'opacity-0' : 'opacity-100']">
+                                    <div v-html="getQuestion(currentCard)" class="text-2xl font-semibold text-gray-900 dark:text-white markdown-content"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Back (Answer) -->
+                            <div class="flip-card-back bg-gradient-to-br from-white to-teal-50/30 dark:from-gray-800 dark:to-teal-900/20 backdrop-blur-sm rounded-3xl border-2 border-teal-400/50 dark:border-teal-500/50 cursor-pointer p-8 shadow-xl shadow-teal-500/10 overflow-y-auto flex justify-center"
+                                 @click="flipCard"
+                                 :class="hasComplexContent(getAnswer(currentCard)) ? 'items-start' : 'items-center'">
+                                <div class="w-full transition-opacity duration-300" :class="[hasComplexContent(getAnswer(currentCard)) ? 'text-left' : 'text-center', isTransitioning ? 'opacity-0' : 'opacity-100']">
+                                    <div v-html="getAnswer(currentCard)" class="text-2xl font-semibold text-gray-900 dark:text-white markdown-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons (Always take up space) -->
+                    <div class="flex gap-4 justify-center flex-shrink-0" style="min-height: 60px;">
+                        <button @click="markAnswer(false)" 
+                                :disabled="!isFlipped"
+                                :class="isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                                class="flex-1 max-w-xs bg-gradient-to-r from-red-500 to-pink-500 dark:from-red-600 dark:to-pink-600 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-red-600 hover:to-pink-600 dark:hover:from-red-700 dark:hover:to-pink-700 transition-all duration-300 shadow-lg shadow-red-500/30">
+                            <i class="fas fa-times"></i> Incorrect
+                        </button>
+                        <button @click="markAnswer(true)" 
+                                :disabled="!isFlipped"
+                                :class="isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                                class="flex-1 max-w-xs bg-gradient-to-r from-green-500 to-teal-500 dark:from-green-600 dark:to-teal-600 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-green-600 hover:to-teal-600 dark:hover:from-green-700 dark:hover:to-teal-700 transition-all duration-300 shadow-lg shadow-green-500/30">
+                            <i class="fas fa-check"></i> Correct
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exit Confirmation Modal -->
+            <div v-if="showExitModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" @click.self="showExitModal = false">
+                <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-3xl rounded-2xl shadow-2xl p-10 max-w-md mx-4 border border-gray-200/50 dark:border-gray-700/50 transition-colors duration-300">
+                    <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Exit session?</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-6">Your progress will be lost if you exit now.</p>
+                    <div class="flex gap-4">
+                        <button @click="showExitModal = false" 
+                                class="flex-1 bg-gradient-to-r from-gray-500 to-gray-400 dark:from-gray-700 dark:to-gray-600 text-white py-4 px-6 rounded-xl font-bold hover:from-gray-400 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all transform hover:scale-105 shadow-lg">
+                            Cancel
+                        </button>
+                        <button @click="confirmExit" 
+                                class="flex-1 bg-gradient-to-r from-red-600 to-red-500 text-white py-4 px-6 rounded-xl font-bold hover:from-red-500 hover:to-red-400 transition-all transform hover:scale-105 shadow-lg shadow-red-500/30">
+                            Exit
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary View -->
+            <div v-if="!loading && !error && currentView === 'summary'" class="max-w-2xl mx-auto animate-fade-in">
+                <!-- Fireworks for perfect score -->
+                <div v-if="scorePercentage === 100" class="fixed inset-0 pointer-events-none z-50">
+                    <div v-for="i in 50" :key="i" class="confetti" 
+                         :style="{
+                             left: Math.random() * 100 + '%',
+                             top: -20 + 'px',
+                             backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+                             animationDelay: Math.random() * 2 + 's',
+                             animationDuration: (2 + Math.random() * 2) + 's'
+                         }">
+                    </div>
+                </div>
+                
+                <div class="bg-white/85 dark:bg-gray-900/85 backdrop-blur-2xl rounded-3xl shadow-2xl p-8 md:p-10 border border-purple-200/50 dark:border-purple-800/50 transition-colors duration-300">
+                    <h2 class="text-4xl font-semibold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 text-transparent bg-clip-text mb-8 text-center tracking-tight">
+                        <span v-if="scorePercentage === 100"><i class="fas fa-trophy"></i> Perfect score! <i class="fas fa-trophy"></i></span>
+                        <span v-else><i class="fas fa-flag-checkered"></i> Session complete!</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                        <div class="text-center p-6 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-slate-800/80 dark:to-slate-900/80 backdrop-blur-sm rounded-2xl border border-amber-300 dark:border-amber-400/30 shadow-lg shadow-amber-400/20">
+                            <p class="text-4xl font-extrabold text-amber-600 dark:text-amber-400 drop-shadow-lg">{{ results.total }}</p>
+                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-3">Total cards</p>
+                        </div>
+                        <div class="text-center p-6 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-emerald-950/40 backdrop-blur-sm rounded-2xl border border-emerald-300 dark:border-emerald-400/30 shadow-lg shadow-emerald-400/20">
+                            <p class="text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 drop-shadow-lg">{{ results.correct }}</p>
+                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-3">Correct</p>
+                        </div>
+                        <div class="text-center p-6 bg-gradient-to-br from-red-100 to-rose-100 dark:from-red-900/40 dark:to-red-950/40 backdrop-blur-sm rounded-2xl border border-red-300 dark:border-red-400/30 shadow-lg shadow-red-400/20">
+                            <p class="text-4xl font-extrabold text-red-600 dark:text-red-400 drop-shadow-lg">{{ results.incorrect }}</p>
+                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-3">Incorrect</p>
+                        </div>
+                        <div class="text-center p-6 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-blue-950/40 backdrop-blur-sm rounded-2xl border border-blue-300 dark:border-blue-400/30 shadow-lg shadow-blue-400/20">
+                            <p class="text-4xl font-extrabold text-blue-600 dark:text-blue-400 drop-shadow-lg">{{ formattedElapsedTime }}</p>
+                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-3">Time</p>
+                        </div>
+                    </div>
+
+                    <!-- Score Circle -->
+                    <div class="text-center mb-8">
+                        <div class="inline-block">
+                            <div class="relative">
+                                <svg class="w-48 h-48 transform -rotate-90">
+                                    <circle cx="96" cy="96" r="88" stroke="#e5e7eb" stroke-width="12" fill="none"/>
+                                    <circle cx="96" cy="96" r="88" :stroke="scoreColor" stroke-width="12" fill="none"
+                                            stroke-linecap="round"
+                                            :stroke-dasharray="circumference"
+                                            :stroke-dashoffset="circumference - (scorePercentage / 100) * circumference"
+                                            class="transition-all duration-1000"/>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="text-center">
+                                        <p class="text-5xl font-bold text-gray-800 dark:text-white">{{ scorePercentage }}%</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-300">Score</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xl font-semibold mt-4" :class="scoreTextClass">{{ scoreMessage }}</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid gap-4">
+                        <button @click="restartDeck" 
+                                class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-5 px-6 rounded-2xl font-bold text-lg hover:from-amber-500 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 shadow-xl shadow-amber-500/30">
+                            <i class="fas fa-rotate-right"></i> Repeat This Deck
+                        </button>
+                        <button @click="backToDecks" 
+                                class="w-full bg-gradient-to-r from-slate-700 to-slate-600 dark:from-slate-700 dark:to-slate-600 text-white py-5 px-6 rounded-2xl font-bold text-lg hover:from-slate-600 hover:to-slate-500 transition-all duration-300 transform hover:scale-105 shadow-xl">
+                            <i class="fas fa-arrow-left"></i> Choose Another Deck
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with Settings -->
+        <footer v-if="currentView !== 'study'" class="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl shadow-lg border-t border-purple-200/30 dark:border-purple-800/30 transition-colors duration-300">
+            <div class="px-4 py-4 max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-2">
+                    <button @click="showSettings = !showSettings" class="text-gray-800 dark:text-white font-semibold flex items-center gap-2 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                        <i class="fas fa-cog"></i> API Settings
+                        <i class="fas text-sm" :class="showSettings ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                    </button>
+                    <a href="https://espazo.dende.gal/3uSSbZBWt4Zl2r" target="_blank" rel="noopener noreferrer" 
+                       class="text-gray-600 dark:text-gray-400 text-sm hover:text-teal-600 dark:hover:text-teal-400 transition-colors flex items-center gap-1">
+                        <i class="fas fa-question-circle"></i> Need help?
+                    </a>
+                </div>
+                
+                <div v-if="showSettings" class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Base URL</label>
+                        <input v-model="tempApiUrl" type="text" 
+                               class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 dark:focus:ring-amber-500 focus:border-transparent transition-colors"
+                               placeholder="https://connect.craft.do/links/YOUR_ID/api/v1">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">The app will automatically discover deck and flashcard collections</p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button @click="saveApiUrl" 
+                                class="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-5 py-2.5 rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all duration-300 font-bold shadow-lg shadow-amber-500/30 transform hover:scale-105">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                        <button @click="resetApiUrl" 
+                                class="bg-gradient-to-r from-gray-600 to-gray-500 dark:from-gray-700 dark:to-gray-600 text-white px-5 py-2.5 rounded-xl hover:from-gray-500 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 font-bold shadow-lg transform hover:scale-105">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <button @click="refreshData" 
+                                class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-5 py-2.5 rounded-xl hover:from-green-500 hover:to-emerald-500 transition-all duration-300 font-bold shadow-lg shadow-green-500/30 transform hover:scale-105">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Changes will be saved to your browser and applied on next load.</p>
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-gray-200/30 dark:border-gray-700/30">
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                        <span class="font-semibold text-gray-800 dark:text-white">CraftCards</span> — A modern flashcard study app powered by Craft.do. Track your progress, master your knowledge, and craft your learning journey.
+                    </p>
+                    <p class="text-gray-500 dark:text-gray-500 text-xs">
+                        Made by <span class="font-medium text-gray-700 dark:text-gray-300">Carlos González</span> © 2025 · Contact: <a href="mailto:craftcard@dende.gal" class="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors">craftcard@dende.gal</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    // Session version for localStorage compatibility
+                    SESSION_VERSION: 1,
+                    
+                    // API Configuration
+                    apiBaseUrl: 'https://connect.craft.do/links/99hv7RIa4LI/api/v1',
+                    defaultApiBaseUrl: 'https://connect.craft.do/links/99hv7RIa4LI/api/v1',
+                    tempApiUrl: '',
+                    decksCollectionId: null,
+                    flashcardsCollectionId: null,
+                    showSettings: false,
+                    showExitModal: false,
+                    
+                    // State
+                    loading: true,
+                    error: null,
+                    currentView: 'decks', // 'decks', 'study', 'summary'
+                    
+                    // Data
+                    decks: [],
+                    flashcards: [],
+                    sessions: [],
+                    selectedDeck: null,
+                    currentDeckFlashcards: [],
+                    currentCardIndex: 0,
+                    isFlipped: false,
+                    isTransitioning: false,
+                    
+                    // Timer
+                    startTime: null,
+                    currentTime: null,
+                    timerInterval: null,
+                    elapsedTime: 0,
+                    
+                    // Results
+                    results: {
+                        total: 0,
+                        correct: 0,
+                        incorrect: 0
+                    },
+                    
+                    // Image cache
+                    imageCache: new Set(),
+                    preloadedImages: {},
+                    
+                    // Theme
+                    isDarkMode: true
+                };
+            },
+            computed: {
+                apiId() {
+                    // Extract API ID from URL (e.g., 99hv7RIa4LI from https://connect.craft.do/links/99hv7RIa4LI/api/v1)
+                    const match = this.apiBaseUrl.match(/\/links\/([^\/]+)\//);
+                    return match ? match[1] : 'default';
+                },
+                currentCard() {
+                    return this.currentDeckFlashcards[this.currentCardIndex] || null;
+                },
+                progress() {
+                    if (this.currentDeckFlashcards.length === 0) return 0;
+                    return ((this.currentCardIndex + 1) / this.currentDeckFlashcards.length) * 100;
+                },
+                scorePercentage() {
+                    if (this.results.total === 0) return 0;
+                    return Math.round((this.results.correct / this.results.total) * 100);
+                },
+                scoreColor() {
+                    const percentage = this.scorePercentage;
+                    if (percentage >= 80) return '#10b981'; // green
+                    if (percentage >= 60) return '#f59e0b'; // orange
+                    return '#ef4444'; // red
+                },
+                scoreTextClass() {
+                    const percentage = this.scorePercentage;
+                    if (percentage >= 80) return 'text-green-600 dark:text-green-400';
+                    if (percentage >= 60) return 'text-orange-600 dark:text-orange-400';
+                    return 'text-red-600 dark:text-red-400';
+                },
+                scoreMessage() {
+                    const percentage = this.scorePercentage;
+                    if (percentage >= 90) return 'Outstanding! 🌟';
+                    if (percentage >= 80) return 'Great job! 👏';
+                    if (percentage >= 70) return 'Good work! 👍';
+                    if (percentage >= 60) return 'Keep practicing! 📚';
+                    return 'Keep learning! 💪';
+                },
+                circumference() {
+                    return 2 * Math.PI * 88; // 88 is the radius
+                },
+                formattedTimer() {
+                    if (!this.startTime || !this.currentTime) return '0:00';
+                    const elapsed = Math.floor((this.currentTime - this.startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                },
+                formattedElapsedTime() {
+                    const minutes = Math.floor(this.elapsedTime / 60);
+                    const seconds = this.elapsedTime % 60;
+                    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                },
+                recentSessions() {
+                    if (!this.sessions || this.sessions.length === 0) return [];
+                    
+                    // Sort sessions by title (date) in descending order and take first 10
+                    return [...this.sessions]
+                        .sort((a, b) => b.title.localeCompare(a.title))
+                        .slice(0, 10);
+                }
+            },
+            methods: {
+                async loadDecks() {
+                    this.loading = true;
+                    this.error = null;
+                    
+                    try {
+                        // Discover collections if not already set
+                        if (!this.decksCollectionId || !this.flashcardsCollectionId) {
+                            await this.discoverCollections();
+                        }
+                        
+                        // Fetch decks
+                        const decksUrl = `${this.apiBaseUrl}/collections/${this.decksCollectionId}/items`;
+                        const decksResponse = await fetch(decksUrl);
+                        if (!decksResponse.ok) throw new Error('Failed to fetch decks');
+                        const decksData = await decksResponse.json();
+                        
+                        // Fetch flashcards
+                        const flashcardsUrl = `${this.apiBaseUrl}/collections/${this.flashcardsCollectionId}/items`;
+                        const flashcardsResponse = await fetch(flashcardsUrl);
+                        if (!flashcardsResponse.ok) throw new Error('Failed to fetch flashcards');
+                        const flashcardsData = await flashcardsResponse.json();
+                        
+                        this.flashcards = flashcardsData.items || [];
+                        this.processDecks(decksData.items || []);
+                        
+                        // Load sessions from localStorage
+                        this.loadSessions();
+                        
+                        // Preload all images
+                        this.preloadAllImages();
+                        
+                        this.loading = false;
+                    } catch (err) {
+                        this.error = err.message;
+                        this.loading = false;
+                        console.error('Error loading data:', err);
+                    }
+                },
+                loadSessions() {
+                    try {
+                        const sessionVersion = localStorage.getItem('sessionVersion');
+                        const allSessionsData = localStorage.getItem('sessions');
+                        
+                        // Check version compatibility
+                        if (sessionVersion !== String(this.SESSION_VERSION)) {
+                            console.warn(`Session version mismatch (stored: ${sessionVersion}, current: ${this.SESSION_VERSION}). Resetting sessions.`);
+                            localStorage.removeItem('sessions');
+                            localStorage.setItem('sessionVersion', String(this.SESSION_VERSION));
+                            this.sessions = [];
+                            return;
+                        }
+                        
+                        const allSessions = allSessionsData ? JSON.parse(allSessionsData) : [];
+                        
+                        // Filter sessions for current API
+                        this.sessions = allSessions.filter(session => session.apiId === this.apiId);
+                        console.log(`Loaded ${this.sessions.length} sessions for API ${this.apiId}`);
+                    } catch (err) {
+                        console.error('Error loading sessions from localStorage:', err);
+                        this.sessions = [];
+                    }
+                },
+                async discoverCollections() {
+                    const collectionsUrl = `${this.apiBaseUrl}/collections`;
+                    const response = await fetch(collectionsUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error('Invalid API URL: Unable to fetch collections');
+                    }
+                    
+                    const data = await response.json();
+                    const collections = data.items || [];
+                    
+                    // Find deck collection by name
+                    const deckCollection = collections.find(col => 
+                        col.name === 'Deck'
+                    );
+                    
+                    // Find flashcard collection by name
+                    const flashcardCollection = collections.find(col => 
+                        col.name === 'Flashcard'
+                    );
+                    
+                    if (!deckCollection) {
+                        throw new Error('Deck collection not found. Please ensure your API has a collection named "Deck".');
+                    }
+                    
+                    if (!flashcardCollection) {
+                        throw new Error('Flashcard collection not found. Please ensure your API has a collection named "Flashcard".');
+                    }
+                    
+                    this.decksCollectionId = deckCollection.id;
+                    this.flashcardsCollectionId = flashcardCollection.id;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('decksCollectionId', this.decksCollectionId);
+                    localStorage.setItem('flashcardsCollectionId', this.flashcardsCollectionId);
+                },
+                extractImageUrls() {
+                    const imageUrls = new Set();
+                    
+                    // Extract from decks
+                    this.decks.forEach(deck => {
+                        if (deck.image) {
+                            imageUrls.add(deck.image);
+                        }
+                    });
+                    
+                    // Extract from flashcards
+                    this.flashcards.forEach(flashcard => {
+                        if (flashcard.content && Array.isArray(flashcard.content)) {
+                            flashcard.content.forEach(item => {
+                                if (item.type === 'image' && item.url) {
+                                    imageUrls.add(item.url);
+                                }
+                            });
+                        }
+                    });
+                    
+                    return Array.from(imageUrls);
+                },
+                preloadAllImages() {
+                    const imageUrls = this.extractImageUrls();
+                    
+                    console.log(`Preloading ${imageUrls.length} images...`);
+                    
+                    imageUrls.forEach(url => {
+                        if (!this.imageCache.has(url)) {
+                            const img = new Image();
+                            
+                            img.onload = () => {
+                                this.imageCache.add(url);
+                                this.preloadedImages[url] = img;
+                                console.log(`✓ Preloaded: ${url.substring(0, 50)}...`);
+                            };
+                            
+                            img.onerror = () => {
+                                console.warn(`✗ Failed to preload: ${url.substring(0, 50)}...`);
+                            };
+                            
+                            img.src = url;
+                        }
+                    });
+                },
+                processDecks(deckItems) {
+                    this.decks = deckItems.map(deck => {
+                        // Extract image from content
+                        let imageUrl = null;
+                        if (deck.content && deck.content.length > 0) {
+                            const imageContent = deck.content.find(item => item.type === 'image');
+                            if (imageContent) {
+                                imageUrl = imageContent.url;
+                            }
+                        }
+                        
+                        // Count flashcards
+                        const flashcardCount = deck.properties?.flashcards?.relations?.length || 0;
+                        
+                        return {
+                            id: deck.id,
+                            title: deck.title,
+                            image: imageUrl,
+                            flashcardCount: flashcardCount
+                        };
+                    }).filter(deck => deck.title && deck.flashcardCount > 0);
+                },
+                getFlashcardCount(deck) {
+                    return deck.flashcardCount || 0;
+                },
+                getDeckImage(deck) {
+                    return deck.image;
+                },
+                getSessionCount(deck) {
+                    if (!this.sessions || this.sessions.length === 0) return 0;
+                    
+                    // Count sessions where deckId matches this deck's id
+                    return this.sessions.filter(session => session.deckId === deck.id).length;
+                },
+                getAverageScore(deck) {
+                    if (!this.sessions || this.sessions.length === 0) return null;
+                    
+                    const deckSessions = this.sessions.filter(session => session.deckId === deck.id);
+                    if (deckSessions.length === 0) return null;
+                    
+                    const totalScore = deckSessions.reduce((sum, session) => sum + session.score, 0);
+                    return Math.round(totalScore / deckSessions.length);
+                },
+                getAverageScoreClass(avgScore) {
+                    if (avgScore === null) return '';
+                    if (avgScore >= 80) return 'text-green-600 dark:text-green-400';
+                    if (avgScore >= 60) return 'text-orange-600 dark:text-orange-400';
+                    return 'text-red-600 dark:text-red-400';
+                },
+                getDeckNameForSession(session) {
+                    const deck = this.decks.find(d => d.id === session.deckId);
+                    return deck ? deck.title : 'Unknown Deck';
+                },
+                getScoreClass(score) {
+                    if (score >= 80) return 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300';
+                    if (score >= 60) return 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300';
+                    return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
+                },
+                formatSessionDate(isoString) {
+                    const date = new Date(isoString);
+                    return date.toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+                clearSessions() {
+                    if (confirm('Are you sure you want to clear all session history for this API?')) {
+                        // Load all sessions
+                        const allSessionsData = localStorage.getItem('sessions');
+                        const allSessions = allSessionsData ? JSON.parse(allSessionsData) : [];
+                        
+                        // Filter out sessions for current API
+                        const remainingSessions = allSessions.filter(session => session.apiId !== this.apiId);
+                        
+                        // Save remaining sessions
+                        localStorage.setItem('sessions', JSON.stringify(remainingSessions));
+                        
+                        // Clear current view
+                        this.sessions = [];
+                        console.log('Sessions cleared for API', this.apiId);
+                    }
+                },
+                formatElapsedTime(seconds) {
+                    if (!seconds) return '0:00';
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+                },
+                selectDeck(deck) {
+                    this.selectedDeck = deck;
+                    
+                    // Filter flashcards for this deck
+                    this.currentDeckFlashcards = this.flashcards.filter(flashcard => {
+                        const deckRelations = flashcard.properties?.deck?.relations;
+                        return deckRelations && deckRelations.some(rel => rel.blockId === deck.id);
+                    });
+                    
+                    // Shuffle flashcards
+                    this.currentDeckFlashcards = this.shuffleArray([...this.currentDeckFlashcards]);
+                    
+                    if (this.currentDeckFlashcards.length === 0) {
+                        alert('This deck has no flashcards!');
+                        return;
+                    }
+                    
+                    // Reset session
+                    this.currentCardIndex = 0;
+                    this.isFlipped = false;
+                    this.results = {
+                        total: 0,
+                        correct: 0,
+                        incorrect: 0
+                    };
+                    
+                    // Start timer
+                    this.startTimer();
+                    
+                    this.currentView = 'study';
+                },
+                flipCard() {
+                    this.isFlipped = !this.isFlipped;
+                },
+                markAnswer(correct) {
+                    this.results.total++;
+                    if (correct) {
+                        this.results.correct++;
+                    } else {
+                        this.results.incorrect++;
+                    }
+                    
+                    // Move to next card or show summary
+                    if (this.currentCardIndex < this.currentDeckFlashcards.length - 1) {
+                        // Fade out content
+                        this.isTransitioning = true;
+                        
+                        // Wait for fade out, then flip back to question side
+                        setTimeout(() => {
+                            this.isFlipped = false;
+                        }, 300);
+                        
+                        // Wait for flip animation to complete before advancing
+                        setTimeout(() => {
+                            this.currentCardIndex++;
+                            // Fade in new content
+                            this.isTransitioning = false;
+                        }, 900); // 300ms fade + 600ms flip
+                    } else {
+                        this.showSummary();
+                    }
+                },
+                showSummary() {
+                    this.stopTimer();
+                    this.currentView = 'summary';
+                    
+                    // Save session to localStorage
+                    this.saveSession();
+                },
+                saveSession() {
+                    try {
+                        // Create session object with datetime and API ID
+                        const sessionData = {
+                            id: Date.now().toString(),
+                            title: new Date().toISOString(),
+                            apiId: this.apiId,
+                            deckId: this.selectedDeck.id,
+                            flashcards_played: this.results.total,
+                            score: this.scorePercentage,
+                            elapsedTime: this.elapsedTime
+                        };
+                        
+                        // Load all sessions from localStorage
+                        const allSessionsData = localStorage.getItem('sessions');
+                        const allSessions = allSessionsData ? JSON.parse(allSessionsData) : [];
+                        
+                        // Add new session to all sessions
+                        allSessions.push(sessionData);
+                        
+                        // Save all sessions back to localStorage
+                        localStorage.setItem('sessions', JSON.stringify(allSessions));
+                        localStorage.setItem('sessionVersion', String(this.SESSION_VERSION));
+                        
+                        // Update current sessions view
+                        this.sessions.push(sessionData);
+                        
+                        console.log('Session saved to localStorage for API', this.apiId);
+                    } catch (err) {
+                        console.error('Error saving session to localStorage:', err);
+                    }
+                },
+                restartDeck() {
+                    if (this.selectedDeck) {
+                        this.selectDeck(this.selectedDeck);
+                    }
+                },
+                backToDecks() {
+                    this.stopTimer();
+                    this.showExitModal = false;
+                    this.currentView = 'decks';
+                    this.selectedDeck = null;
+                    this.currentDeckFlashcards = [];
+                    this.currentCardIndex = 0;
+                    this.isFlipped = false;
+                },
+                exitStudy() {
+                    this.showExitModal = true;
+                },
+                confirmExit() {
+                    this.showExitModal = false;
+                    this.backToDecks();
+                },
+                shuffleArray(array) {
+                    for (let i = array.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
+                    return array;
+                },
+                getQuestion(card) {
+                    if (!card) return '';
+                    
+                    let questionHtml = `<div class="mb-4">${card.title}</div>`;
+                    
+                    if (card.content && card.content.length > 0) {
+                        // Find the page break separator
+                        const separatorIndex = card.content.findIndex(block => 
+                            block.type === 'line' && block.lineStyle === 'pageBreak'
+                        );
+                        
+                        if (separatorIndex !== -1) {
+                            // Content before separator is additional question content
+                            const questionContent = card.content.slice(0, separatorIndex);
+                            if (questionContent.length > 0) {
+                                questionHtml += this.renderContent(questionContent);
+                            }
+                        }
+                    }
+                    
+                    return questionHtml;
+                },
+                getAnswer(card) {
+                    if (!card || !card.content || card.content.length === 0) return 'No answer';
+                    
+                    // Find the page break separator
+                    const separatorIndex = card.content.findIndex(block => 
+                        block.type === 'line' && block.lineStyle === 'pageBreak'
+                    );
+                    
+                    if (separatorIndex !== -1) {
+                        // Content after separator is the answer
+                        const answerContent = card.content.slice(separatorIndex + 1);
+                        if (answerContent.length > 0) {
+                            return this.renderContent(answerContent);
+                        }
+                    }
+                    
+                    // No page break: render all content as answer (images + text with markdown)
+                    return this.renderContent(card.content);
+                },
+                renderContent(contentArray) {
+                    let html = '';
+                    let currentList = null;
+                    let currentLevel = -1;
+                    
+                    for (let i = 0; i < contentArray.length; i++) {
+                        const item = contentArray[i];
+                        
+                        if (item.type === 'image') {
+                            // Close any open list
+                            if (currentList) {
+                                html += this.closeListLevels(currentLevel, -1, currentList);
+                                currentList = null;
+                                currentLevel = -1;
+                            }
+                            html += `<img src="${item.url}" alt="Image" style="max-width: 100%; max-height: 200px; margin: 0 auto; display: block; border-radius: 8px;" loading="eager" decoding="async" />`;
+                        } else if (item.type === 'text') {
+                            const markdown = item.markdown || '';
+                            const listStyle = item.listStyle;
+                            const indentLevel = item.indentationLevel || 0;
+                            
+                            if (listStyle) {
+                                // Handle list items
+                                const listTag = listStyle === 'bullet' ? 'ul' : 'ol';
+                                
+                                // Open or adjust list levels
+                                if (!currentList || currentList !== listTag) {
+                                    if (currentList) {
+                                        html += this.closeListLevels(currentLevel, -1, currentList);
+                                    }
+                                    html += `<${listTag}>`;
+                                    currentList = listTag;
+                                    currentLevel = indentLevel;
+                                } else if (indentLevel > currentLevel) {
+                                    // Open nested list
+                                    html += `<${listTag}>`;
+                                    currentLevel = indentLevel;
+                                } else if (indentLevel < currentLevel) {
+                                    // Close nested lists
+                                    html += this.closeListLevels(currentLevel, indentLevel, currentList);
+                                    currentLevel = indentLevel;
+                                }
+                                
+                                // Remove markdown list markers and parse content
+                                const cleanMarkdown = markdown.replace(/^[\s-]*[-*+]\s*/, '').trim();
+                                const parsedContent = marked.parseInline(cleanMarkdown);
+                                html += `<li>${parsedContent}</li>`;
+                            } else {
+                                // Close any open list for non-list content
+                                if (currentList) {
+                                    html += this.closeListLevels(currentLevel, -1, currentList);
+                                    currentList = null;
+                                    currentLevel = -1;
+                                }
+                                // Parse as regular markdown
+                                if (markdown.trim()) {
+                                    html += marked.parse(markdown, { breaks: true });
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Close any remaining open lists
+                    if (currentList) {
+                        html += this.closeListLevels(currentLevel, -1, currentList);
+                    }
+                    
+                    return html;
+                },
+                closeListLevels(fromLevel, toLevel, listType) {
+                    let html = '';
+                    const levelsToClose = fromLevel - toLevel;
+                    for (let i = 0; i < levelsToClose; i++) {
+                        html += `</${listType}>`;
+                    }
+                    if (toLevel === -1) {
+                        html += `</${listType}>`;
+                    }
+                    return html;
+                },
+                hasComplexContent(html) {
+                    if (!html) return false;
+                    // Check for lists, multiple paragraphs, or line breaks indicating complex content
+                    return html.includes('<ul>') || 
+                           html.includes('<ol>') || 
+                           html.includes('<li>') ||
+                           (html.match(/<p>/g) || []).length > 1 ||
+                           html.includes('<br>');
+                },
+                loadApiUrl() {
+                    const savedApiUrl = localStorage.getItem('apiBaseUrl');
+                    const savedDecksCollectionId = localStorage.getItem('decksCollectionId');
+                    const savedFlashcardsCollectionId = localStorage.getItem('flashcardsCollectionId');
+                    
+                    if (savedApiUrl) {
+                        this.apiBaseUrl = savedApiUrl;
+                    }
+                    if (savedDecksCollectionId) {
+                        this.decksCollectionId = savedDecksCollectionId;
+                    }
+                    if (savedFlashcardsCollectionId) {
+                        this.flashcardsCollectionId = savedFlashcardsCollectionId;
+                    }
+                    
+                    this.tempApiUrl = this.apiBaseUrl;
+                },
+                saveApiUrl() {
+                    if (!this.tempApiUrl.trim()) {
+                        alert('Please enter a valid API URL');
+                        return;
+                    }
+                    this.apiBaseUrl = this.tempApiUrl;
+                    localStorage.setItem('apiBaseUrl', this.apiBaseUrl);
+                    // Clear collection IDs so they get rediscovered
+                    localStorage.removeItem('decksCollectionId');
+                    localStorage.removeItem('flashcardsCollectionId');
+                    this.decksCollectionId = null;
+                    this.flashcardsCollectionId = null;
+                    location.reload();
+                },
+                resetApiUrl() {
+                    if (confirm('Reset to default API URL?')) {
+                        localStorage.removeItem('apiBaseUrl');
+                        localStorage.removeItem('decksCollectionId');
+                        localStorage.removeItem('flashcardsCollectionId');
+                        location.reload();
+                    }
+                },
+                refreshData() {
+                    location.reload();
+                },
+                startTimer() {
+                    this.startTime = Date.now();
+                    this.currentTime = Date.now();
+                    this.timerInterval = setInterval(() => {
+                        this.currentTime = Date.now();
+                    }, 1000);
+                },
+                stopTimer() {
+                    if (this.timerInterval) {
+                        clearInterval(this.timerInterval);
+                        this.timerInterval = null;
+                    }
+                    if (this.startTime && this.currentTime) {
+                        this.elapsedTime = Math.floor((this.currentTime - this.startTime) / 1000);
+                    }
+                },
+                toggleTheme() {
+                    this.isDarkMode = !this.isDarkMode;
+                    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+                    this.applyTheme();
+                },
+                applyTheme() {
+                    if (this.isDarkMode) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                },
+                loadTheme() {
+                    const savedTheme = localStorage.getItem('theme');
+                    if (savedTheme) {
+                        this.isDarkMode = savedTheme === 'dark';
+                    } else {
+                        // Use system preference as default
+                        this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    }
+                    this.applyTheme();
+                }
+            },
+            mounted() {
+                this.loadTheme();
+                this.loadApiUrl();
+                this.loadDecks();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
